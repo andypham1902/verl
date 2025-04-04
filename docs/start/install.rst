@@ -21,6 +21,11 @@ We recommend using **FSDP** backend to investigate, research and prototype diffe
 
 For users who pursue better scalability, we recommend using **Megatron-LM** backend. Currently, we support Megatron-LM v0.11 [1]_. The guide for using Megatron-LM backend can be found in :doc:`Megatron-LM Workers<../workers/megatron_workers>`.
 
+.. note:: 
+
+    We are announcing the direct support of GPTModel, without need to implement your own model any more. Also it's easy to use TransformerEngine's support for even higher performance.
+    The main branch of verl has enabled this feature, but may not stable enough. If you encounter issues, please feel free to report and try `0.3.x branch <https://github.com/volcengine/verl/tree/v0.3.x>`_ instead.
+
 2. Inference:
 
 For inference, the integration of both vllm v0.6.3 and v0.8.2 is stable. For huggingface TGI integration, it is usually used for debugging and single GPU exploration. Regarding sglang integration, it is blazing fast and under rapid development - we release it as a preview feature and please give us feedbacks.
@@ -79,9 +84,9 @@ The following steps are quick installation guide for verl-SGLang.
     git clone https://github.com/volcengine/verl verl-sglang && cd verl-sglang
     python3 -m uv pip install .
     
-    # Install the latest stable version of sglang with verl support, currently, the latest version is 0.4.3.post3
+    # Install the latest stable version of sglang with verl support, currently, the latest version is 0.4.4.post3
     # For SGLang installation, you can also refer to https://docs.sglang.ai/start/install.html
-    python3 -m uv pip install "sglang[all]==0.4.4.post1" --find-links https://flashinfer.ai/whl/cu124/torch2.5/flashinfer-python
+    python3 -m uv pip install "sglang[all]==0.4.4.post3" --find-links https://flashinfer.ai/whl/cu124/torch2.5/flashinfer-python
 
 
 Install from custom environment

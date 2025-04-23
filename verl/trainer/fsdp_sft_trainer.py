@@ -87,8 +87,8 @@ class FSDPSFTTrainer(object):
         local_model_path = copy_to_local(src=self.config.model.partial_pretrain, verbose=True)
         from verl.utils import hf_tokenizer
         self.tokenizer = hf_tokenizer(local_model_path, trust_remote_code=self.config.model.trust_remote_code)
-        if self.config.data.chat_template is not None:
-            raise ValueError('Apply Chat template from config is not supported yet.')
+        # if self.config.data.chat_template is not None:
+        #     raise ValueError('Apply Chat template from config is not supported yet.')
 
         # normalize dp size
         self._normalize_config_bsz()
@@ -129,9 +129,11 @@ class FSDPSFTTrainer(object):
             dataset_cls = load_extern_type(config.data.custom_cls.path, config.data.custom_cls.name)
         # Then check if multi-turn dataset should be used
         elif config.data.get('multiturn', {}).get('enable', False):
+            print("Using MultiTurnSFTDataset")
             dataset_cls = MultiTurnSFTDataset
         # Default to single-turn dataset
         else:
+            print("Using SFTDataset")
             dataset_cls = SFTDataset
 
         # Create datasets based on the selected class

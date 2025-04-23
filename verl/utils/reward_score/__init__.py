@@ -46,6 +46,9 @@ def _default_compute_score(data_source, solution_str, ground_truth, extra_info=N
     elif data_source in ['hoanganhpham/openr1', 'hoanganhpham/aime24']:
         from . import openr1
         res = openr1.compute_score(solution_str, ground_truth)
+    elif data_source in ['hoanganh/Medical-Train', 'TsinghuaC3I/MedXpertQA', 'hoanganh/MedQA-Test']:
+        from . import medical
+        res = medical.compute_score(solution_str, ground_truth)
     else:
         raise NotImplementedError(f"Reward function is not implemented for {data_source=}")
 

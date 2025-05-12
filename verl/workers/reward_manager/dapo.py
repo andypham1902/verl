@@ -13,12 +13,11 @@
 # limitations under the License.
 
 from collections import defaultdict
-
+import ray
 import torch
 
 from verl import DataProto
-from verl.utils.reward_score import _default_compute_score
-
+from verl.utils.reward_score import _default_compute_score, medical
 
 class DAPORewardManager:
     """The reward manager."""
@@ -31,6 +30,7 @@ class DAPORewardManager:
         reward_fn_key="data_source",
         max_resp_len=None,
         overlong_buffer_cfg=None,
+        n_resp_per_prompt=1
     ) -> None:
         self.tokenizer = tokenizer
         self.num_examine = num_examine  # the number of batches of decoded responses to print to the console
@@ -38,9 +38,103 @@ class DAPORewardManager:
         self.reward_fn_key = reward_fn_key
         self.overlong_buffer_cfg = overlong_buffer_cfg
         self.max_resp_len = max_resp_len
+        self.n_resp_per_prompt = n_resp_per_prompt
 
         if self.overlong_buffer_cfg is not None:
             assert self.max_resp_len is not None, f"max_resp_len must be provided if {overlong_buffer_cfg=}, but got None"
+    
+    # def __call__(self, data: DataProto, return_dict: bool = False):
+    #     """We will expand this function gradually based on the available datasets"""
+
+    #     # If there is rm score, we directly return rm score. Otherwise, we compute via rm_score_fn
+    #     if "rm_scores" in data.batch.keys():
+    #         if return_dict:
+    #             return {"reward_tensor": data.batch["rm_scores"]}
+    #         else:
+    #             return data.batch["rm_scores"]
+
+    #     reward_tensor = torch.zeros_like(data.batch["responses"], dtype=torch.float32)
+    #     reward_extra_info = defaultdict(list)
+
+    #     already_print_data_sources = {}
+
+    #     for i in range(len(data)):
+    #         data_item = data[i]  # DataProtoItem
+
+    #         prompt_ids = data_item.batch["prompts"]
+
+    #         prompt_length = prompt_ids.shape[-1]
+
+    #         valid_prompt_length = data_item.batch["attention_mask"][:prompt_length].sum()
+    #         valid_prompt_ids = prompt_ids[-valid_prompt_length:]
+
+    #         response_ids = data_item.batch["responses"]
+    #         valid_response_length = data_item.batch["attention_mask"][prompt_length:].sum()
+    #         valid_response_ids = response_ids[:valid_response_length]
+
+    #         # decode
+    #         prompt_str = self.tokenizer.decode(valid_prompt_ids, skip_special_tokens=True)
+    #         response_str = self.tokenizer.decode(valid_response_ids, skip_special_tokens=True)
+    #         eos_token = self.tokenizer.eos_token
+    #         if response_str.endswith(eos_token):
+    #             response_str = response_str[: -len(eos_token)]
+
+    #         ground_truth = data_item.non_tensor_batch["reward_model"]["ground_truth"]
+
+    #         data_source = data_item.non_tensor_batch[self.reward_fn_key]
+
+    #         extra_info = data_item.non_tensor_batch.get("extra_info", None)
+    #         result = self.compute_score(
+    #             data_source=data_source,
+    #             solution_str=response_str,
+    #             ground_truth=ground_truth,
+    #             extra_info=extra_info,
+    #         )
+
+    #         score: float
+    #         if isinstance(result, dict):
+    #             score = result["score"]
+    #             # Store the information including original reward
+    #             for key, value in result.items():
+    #                 reward_extra_info[key].append(value)
+    #         else:
+    #             score = result
+
+    #         reward = score
+
+    #         if self.overlong_buffer_cfg.enable:
+    #             overlong_buffer_len = self.overlong_buffer_cfg.len
+    #             expected_len = self.max_resp_len - overlong_buffer_len
+    #             exceed_len = valid_response_length - expected_len
+    #             overlong_penalty_factor = self.overlong_buffer_cfg.penalty_factor
+    #             overlong_reward = min(-exceed_len / overlong_buffer_len * overlong_penalty_factor, 0)
+    #             reward += overlong_reward
+    #             if self.overlong_buffer_cfg.log:
+    #                 reward_extra_info["overlong_reward"].append(overlong_reward)
+    #                 reward_extra_info["overlong"].append(overlong_reward < 0)
+
+    #         reward_tensor[i, valid_response_length - 1] = reward
+
+    #         if data_source not in already_print_data_sources:
+    #             already_print_data_sources[data_source] = 0
+
+    #         if already_print_data_sources[data_source] < self.num_examine:
+    #             already_print_data_sources[data_source] += 1
+    #             print("[prompt]", prompt_str)
+    #             print("[response]", response_str)
+    #             print("[ground_truth]", ground_truth)
+    #             if isinstance(result, dict):
+    #                 for key, value in result.items():
+    #                     print(f"[{key}]", value)
+    #             else:
+    #                 print("[score]", score)
+    #     if return_dict:
+    #         return {
+    #             "reward_tensor": reward_tensor,
+    #             "reward_extra_info": reward_extra_info,
+    #         }
+    #     else:
+    #         return reward_tensor
 
     def __call__(self, data: DataProto, return_dict: bool = False):
         """We will expand this function gradually based on the available datasets"""
@@ -57,7 +151,7 @@ class DAPORewardManager:
 
         already_print_data_sources = {}
 
-        for i in range(len(data)):
+        for i in range(0, len(data), self.n_resp_per_prompt):
             data_item = data[i]  # DataProtoItem
 
             prompt_ids = data_item.batch["prompts"]
@@ -67,16 +161,21 @@ class DAPORewardManager:
             valid_prompt_length = data_item.batch["attention_mask"][:prompt_length].sum()
             valid_prompt_ids = prompt_ids[-valid_prompt_length:]
 
-            response_ids = data_item.batch["responses"]
-            valid_response_length = data_item.batch["attention_mask"][prompt_length:].sum()
-            valid_response_ids = response_ids[:valid_response_length]
+            response_ids = [data[_i].batch["responses"] for _i in range(i, i + self.n_resp_per_prompt)]
+            valid_response_length = [data[_i].batch["attention_mask"][prompt_length:].sum() for _i in range(i, i + self.n_resp_per_prompt)]
+            valid_response_ids = []
+            for _i in range(self.n_resp_per_prompt):
+                valid_response_ids.append(response_ids[_i][:valid_response_length[_i]])
 
             # decode
             prompt_str = self.tokenizer.decode(valid_prompt_ids, skip_special_tokens=True)
-            response_str = self.tokenizer.decode(valid_response_ids, skip_special_tokens=True)
+            response_strs = []
             eos_token = self.tokenizer.eos_token
-            if response_str.endswith(eos_token):
-                response_str = response_str[: -len(eos_token)]
+            for _i in range(self.n_resp_per_prompt):
+                response_str = self.tokenizer.decode(valid_response_ids[_i], skip_special_tokens=True)
+                if response_str.endswith(eos_token):
+                    response_str = response_str[: -len(eos_token)]
+                response_strs.append(response_str)
 
             ground_truth = data_item.non_tensor_batch["reward_model"]["ground_truth"]
 
@@ -84,12 +183,16 @@ class DAPORewardManager:
 
             extra_info = data_item.non_tensor_batch.get("extra_info", None)
 
-            result = self.compute_score(
-                data_source=data_source,
-                solution_str=response_str,
-                ground_truth=ground_truth,
-                extra_info=extra_info,
-            )
+            if data_source == "hoanganh/Medical-Train-Openended":
+                result = self.compute_score(
+                    data_source=data_source,
+                    solution_strs=response_strs,
+                    ground_truth=ground_truth,
+                    extra_info=extra_info,
+                    prompt = prompt_str,
+                )
+            else:
+                result = [medical.compute_score(response_str, ground_truth) for response_str in response_strs]
 
             score: float
             if isinstance(result, dict):
@@ -105,15 +208,17 @@ class DAPORewardManager:
             if self.overlong_buffer_cfg.enable:
                 overlong_buffer_len = self.overlong_buffer_cfg.len
                 expected_len = self.max_resp_len - overlong_buffer_len
-                exceed_len = valid_response_length - expected_len
+                exceed_len = [_valid_response_length - expected_len for _valid_response_length in valid_response_length]
                 overlong_penalty_factor = self.overlong_buffer_cfg.penalty_factor
-                overlong_reward = min(-exceed_len / overlong_buffer_len * overlong_penalty_factor, 0)
-                reward += overlong_reward
-                if self.overlong_buffer_cfg.log:
-                    reward_extra_info["overlong_reward"].append(overlong_reward)
-                    reward_extra_info["overlong"].append(overlong_reward < 0)
+                overlong_reward = [min(-_exceed_len / overlong_buffer_len * overlong_penalty_factor, 0) for _exceed_len in exceed_len]
+                reward = [r + o for r, o in zip(reward, overlong_reward)]
+                # if self.overlong_buffer_cfg.log:
+                #     reward_extra_info["overlong_reward"].append(overlong_reward)
+                #     reward_extra_info["overlong"].append(overlong_reward < 0)
 
-            reward_tensor[i, valid_response_length - 1] = reward
+            
+            for _i in range(i, min(i + self.n_resp_per_prompt, len(reward_tensor))):
+                reward_tensor[_i, valid_response_length[_i - i] - 1] = reward[_i - i]
 
             if data_source not in already_print_data_sources:
                 already_print_data_sources[data_source] = 0
@@ -128,7 +233,6 @@ class DAPORewardManager:
                         print(f"[{key}]", value)
                 else:
                     print("[score]", score)
-
         if return_dict:
             return {
                 "reward_tensor": reward_tensor,

@@ -195,9 +195,9 @@ reward_model:
   reward_manager: naive
   launch_reward_fn_async: False # custom reward function executed async on CPU, during log_prob
 
-custom_reward_function:
-  path: null
-  name: compute_score
+# custom_reward_function:
+#   path: null
+#   name: compute_score
 
 algorithm:
   gamma: 1.0
@@ -241,3 +241,7 @@ trainer:
 
 ray_init:
   num_cpus: null # `None` means using all CPUs, which might cause hang if limited in systems like SLURM. Please set to a number allowed then.
+
+custom_reward_function:
+  path: verl/utils/simpleqa_eval.py
+  name: compute_score

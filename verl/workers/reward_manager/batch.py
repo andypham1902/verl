@@ -15,7 +15,7 @@
 from collections import defaultdict
 
 import torch
-
+import ray
 from verl import DataProto
 
 
@@ -36,11 +36,14 @@ class BatchRewardManager:
         valid_response_lengths = attention_mask[:, prompt_len:].sum(dim=-1)
 
         responses_str = []
+        # prompt_strs = []
         for i in range(len(data)):
             valid_len = valid_response_lengths[i]
             valid_response_ids = response_ids[i][:valid_len]
             response_str = self.tokenizer.decode(valid_response_ids, skip_special_tokens=True)
             responses_str.append(response_str)
+            # prompt_str = self.tokenizer.decode(prompt_ids[i], skip_special_tokens=True)
+            # prompt_strs.append(prompt_str)
 
         ground_truths = [item.non_tensor_batch["reward_model"].get("ground_truth", None) for item in data]
         data_sources = data.non_tensor_batch[self.reward_fn_key]
@@ -48,6 +51,7 @@ class BatchRewardManager:
 
         scores = self.compute_score(
             data_sources=data_sources,
+            # prompt_strs=prompt_strs,
             solution_strs=responses_str,
             ground_truths=ground_truths,
             extra_infos=extras,

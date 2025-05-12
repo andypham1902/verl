@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 project_name='verl_grpo_medical'
-exp_name='DAPO-medmcqa_hard_10k'
+exp_name='DAPO-4o-as-judge-qwen3-8b'
 
 adv_estimator=grpo
 
@@ -31,8 +31,8 @@ train_prompt_mini_bsz=32
 
 NNODES=1
 # Paths
-MODEL_PATH="hoanganhpham/Medical-SFT-7B-V0"
-TRAIN_FILE="_data/medical/train_medmcqa_hard_grpo.parquet"
+MODEL_PATH="hoanganhpham/8B-Medical-30Apr"
+TRAIN_FILE="_data/medical/o1_verifiable.parquet"
 TEST_FILE="_data/medical/test_medx_medqa.parquet"
 
 # Algorithm
@@ -117,6 +117,6 @@ python3 -m recipe.dapo.src.main_dapo \
     trainer.nnodes="${NNODES}" \
     trainer.val_before_train=True \
     trainer.test_freq=5 \
-    trainer.save_freq=5 \
-    trainer.total_epochs=5 \
+    trainer.save_freq=5  \
+    trainer.total_epochs=20 \
     trainer.resume_mode=auto

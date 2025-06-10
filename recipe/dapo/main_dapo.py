@@ -133,6 +133,7 @@ class TaskRunner:
             reward_fn_key=config.data.reward_fn_key,
             max_resp_len=config.data.max_response_length,
             overlong_buffer_cfg=config.reward_model.overlong_buffer,
+            n_resp_per_prompt=config.actor_rollout_ref.rollout.n,
         )
 
         # Note that we always use function-based RM for validation

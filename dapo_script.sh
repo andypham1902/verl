@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 project_name='verl_grpo_medical'
-exp_name='DAPO-medreason-qwen3-8b'
+exp_name='II-Medical-8B-v2'
 
 adv_estimator=grpo
 
@@ -26,14 +26,14 @@ max_num_gen_batches=10
 train_prompt_bsz=512
 gen_prompt_bsz=$((train_prompt_bsz * 3))
 n_resp_per_prompt=16
-train_prompt_mini_bsz=32
+train_prompt_mini_bsz=64
 
 
-NNODES=4
+NNODES=8
 # Paths
-MODEL_PATH="II-Vietnam/Medical-SFT-Qwen3-8B-29-april"
+MODEL_PATH="/home/slurm/tuenv2/tuenv/exp_medical/veomni_dataset_v2/roll-back-05_06_lr5e-5_exclude_multi_turn/checkpoints/global_step_5412/hf_ckpt"
 TRAIN_FILE="_data/medical/train_medreason_grpo.parquet"
-TEST_FILE="_data/medical/test_medx_medqa.parquet"
+TEST_FILE="_data/medical/test_medx_medqa_ifeval_hb.parquet"
 
 # Algorithm
 temperature=1.0
@@ -48,7 +48,7 @@ infer_ppo_max_token_len=$((max_prompt_length + max_response_length))
 offload=True
 gen_tp=4
 
-python3 -m recipe.dapo.src.main_dapo \
+python3 -m recipe.dapo.main_dapo \
     data.train_files="${TRAIN_FILE}" \
     data.val_files="${TEST_FILE}" \
     data.prompt_key=prompt \

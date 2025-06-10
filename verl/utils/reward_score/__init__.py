@@ -16,6 +16,20 @@
 from verl.utils.import_utils import deprecated
 
 
+def extract_content(solution_str):
+    """Remove reasoning content from the solution string.
+    Args:
+        solution_str (str): The solution string containing reasoning content.
+    Returns:
+        str: The solution string with reasoning content removed.
+    """
+    reasoning_tags = ["</think>", "</thinking>"]
+    for tag in reasoning_tags:
+        if tag in solution_str:
+            solution_str = solution_str.split(tag)[1].strip()
+    return solution_str
+
+
 def default_compute_score(data_source, solution_str, ground_truth, extra_info=None, sandbox_fusion_url=None, concurrent_semaphore=None):
     """Compute the score for a given solution based on the data source.
 
@@ -32,6 +46,7 @@ def default_compute_score(data_source, solution_str, ground_truth, extra_info=No
     Raises:
         NotImplementedError: If the reward function is not implemented for the given data source.
     """
+    solution_str = extract_content(solution_str)
     if data_source == "openai/gsm8k":
         from . import gsm8k
 

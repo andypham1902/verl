@@ -276,13 +276,15 @@ class RLHFDataset(Dataset):
             row_dict["full_prompts"] = raw_prompt  # array of strings
 
         # add index for each prompt
-        index = row_dict.get("extra_info", {}).get("index", 0)
-        tools_kwargs = row_dict.get("extra_info", {}).get("tools_kwargs", {})
-        need_tools_kwargs = row_dict.get("extra_info", {}).get("need_tools_kwargs", self.need_tools_kwargs)
-        if need_tools_kwargs and not tools_kwargs:
-            logger.warning("tools_kwargs is empty for index {}, data source: {}", index, row_dict["data_source"])
-        row_dict["index"] = index
-        row_dict["tools_kwargs"] = tools_kwargs
+        # index = row_dict.get("extra_info", {}).get("index", 0)
+        # tools_kwargs = row_dict.get("extra_info", {}).get("tools_kwargs", {})
+        # need_tools_kwargs = row_dict.get("extra_info", {}).get("need_tools_kwargs", self.need_tools_kwargs)
+        # if need_tools_kwargs and not tools_kwargs:
+        #     logger.warning("tools_kwargs is empty for index {}, data source: {}", index, row_dict["data_source"])
+        # row_dict["index"] = index
+        # row_dict["tools_kwargs"] = tools_kwargs
+        row_dict["index"] = 0
+        row_dict["tools_kwargs"] = {}
         return row_dict
 
     def __getstate__(self):

@@ -41,6 +41,7 @@ class DAPORewardManager:
         self.reward_fn_key = reward_fn_key
         self.overlong_buffer_cfg = overlong_buffer_cfg
         self.max_resp_len = max_resp_len
+        self.n_resp_per_prompt = n_resp_per_prompt
 
         if self.overlong_buffer_cfg is not None:
             assert self.max_resp_len is not None, f"max_resp_len must be provided if {overlong_buffer_cfg=}, but got None"
@@ -101,7 +102,7 @@ class DAPORewardManager:
 
             # decode
             prompt_str = self.tokenizer.decode(valid_prompt_ids, skip_special_tokens=True)
-
+            eos_token = self.tokenizer.eos_token
             response_strs = []
             for _i in range(self.n_resp_per_prompt):
                 response_str = self.tokenizer.decode(valid_response_ids[_i], skip_special_tokens=True)
@@ -109,7 +110,6 @@ class DAPORewardManager:
                     response_str = response_str[: -len(eos_token)]
                 response_strs.append(response_str)
 
-            eos_token = self.tokenizer.eos_token
             if response_str.endswith(eos_token):
                 response_str = response_str[: -len(eos_token)]
 
@@ -118,7 +118,6 @@ class DAPORewardManager:
             data_source = data_item.non_tensor_batch[self.reward_fn_key]
 
             extra_info = data_item.non_tensor_batch.get("extra_info", None)
-
             if data_source == "miriad/miriad-5.8M":
                 result = self.compute_score(
                     data_source=data_source,

@@ -18,8 +18,23 @@ import torch
 
 from verl import DataProto
 from verl.utils.reward_score import default_compute_score, medical
+from verl.utils.reward_score.ifeval import ifeval
+from verl.utils.reward_score.healthbench import healthbench
 from verl.workers.reward_manager import register
 
+
+def extract_content(solution_str):
+    """Remove reasoning content from the solution string.
+    Args:
+        solution_str (str): The solution string containing reasoning content.
+    Returns:
+        str: The solution string with reasoning content removed.
+    """
+    reasoning_tags = ["</think>", "</thinking>"]
+    for tag in reasoning_tags:
+        if tag in solution_str:
+            solution_str = solution_str.split(tag)[1].strip()
+    return solution_str
 
 @register("dapo")
 class DAPORewardManager:
@@ -108,7 +123,7 @@ class DAPORewardManager:
                 response_str = self.tokenizer.decode(valid_response_ids[_i], skip_special_tokens=True)
                 if response_str.endswith(eos_token):
                     response_str = response_str[: -len(eos_token)]
-                response_strs.append(response_str)
+                response_strs.append(extract_content(response_str))
 
             if response_str.endswith(eos_token):
                 response_str = response_str[: -len(eos_token)]
@@ -118,7 +133,8 @@ class DAPORewardManager:
             data_source = data_item.non_tensor_batch[self.reward_fn_key]
 
             extra_info = data_item.non_tensor_batch.get("extra_info", None)
-            if data_source == "miriad/miriad-5.8M":
+
+            if data_source in ["miriad/miriad-5.8M"]:
                 result = self.compute_score(
                     data_source=data_source,
                     solution_strs=response_strs,
@@ -126,9 +142,14 @@ class DAPORewardManager:
                     extra_info=extra_info,
                     prompt = prompt_str,
                 )
-            else:
+            elif data_source in ['hoanganh/Medical-Train', 'TsinghuaC3I/MedXpertQA', 'hoanganh/MedQA-Test']:
                 result = [medical.compute_score(response_str, ground_truth) for response_str in response_strs]
-
+            elif data_source in ['google/IFEval']:
+                result = [ifeval.compute_score(response_str, ground_truth) for response_str in response_strs]
+            elif data_source in ['openai/HealthBench']:
+                result = [healthbench.compute_score(response_str, ground_truth) for response_str in response_strs]
+            else:
+                raise NotImplementedError(f"Reward function is not implemented for {data_source}")
             score: float
             if isinstance(result, dict):
                 score = result["score"]

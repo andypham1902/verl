@@ -685,7 +685,7 @@ reward_model:
 
 # custom reward function definition
 custom_reward_function:
-  path: verl/utils/simpleqa_eval.py
+  path: null
   name: compute_score
 
 # config for the algorithm
@@ -800,7 +800,7 @@ trainer:
   del_local_ckpt_after_load: False
 
   # Default local directory for saving checkpoints
-  default_local_dir: /data/lipsync/andrew/checkpoints/${trainer.project_name}/${trainer.experiment_name}
+  default_local_dir: checkpoints/${trainer.project_name}/${trainer.experiment_name}
 
   # Maximum number of actor checkpoints to keep
   max_actor_ckpt_to_keep: null
